@@ -1,2 +1,2 @@
-# solidity-poker
-Messing around with solidity
+# Solidity Poker
+Messing around with solidity, not real poker.
