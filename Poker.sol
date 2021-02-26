@@ -5,34 +5,41 @@ contract Poker {
     uint constant RESERVE = 50;
     function getStakes() public view returns(uint) { return STAKES; }
     function getReserve() public view returns(uint) { return RESERVE; }
+    function getBuyInPrice() public view returns(uint) { return STAKES + RESERVE; }
     
     int debug = 0;
     function getDebug() public view returns(int) { return debug; }
     
     // Registering
     address payable player1 = payable(address(this));
-    int registeredValue1 = 0;
+    int player1RegisteredValue = 0;
     uint player1Balance = 0;
     uint player1Reserve = 0;
     address payable player2 = payable(address(this));
-    int registeredValue2 = 0;
+    int player2RegisteredValue = 0;
     uint player2Balance = 0;
     uint player2Reserve = 0;
     function register(int value) public payable returns(bool) {
         if (value == 0) { return false; } // 0 is default value
-        if (msg.value < STAKES) {
+        if (msg.value < STAKES + RESERVE) {
+            msg.sender.transfer(msg.value);
             return false;
         }
-        bool player1Registered = registeredValue1 != 0;
-        bool player2Registered = registeredValue2 != 0;
+        bool player1Registered = player1RegisteredValue != 0;
+        bool player2Registered = player2RegisteredValue != 0;
+        if (player1Registered && player2Registered) {
+            // Game full
+            msg.sender.transfer(msg.value);
+            return false;
+        }
         if (!player1Registered) {
-            registeredValue1 = value;
+            player1RegisteredValue = value;
             player1 = msg.sender;
             player1Balance = msg.value - RESERVE;
             player1Reserve = RESERVE;
             return true;
         } else if (!player2Registered) {
-            registeredValue2 = value;
+            player2RegisteredValue = value;
             player2 = msg.sender;
             player2Balance = msg.value - RESERVE;
             player2Reserve = RESERVE;
@@ -40,8 +47,8 @@ contract Poker {
         }
         return false;
     }
-    function getRegisteredValue1() public view returns(int) { return registeredValue1; }
-    function getRegisteredValue2() public view returns(int) { return registeredValue2; }
+    function getPlayer1RegisteredValue() public view returns(int) { return player1RegisteredValue; }
+    function getPlayer2RegisteredValue() public view returns(int) { return player2RegisteredValue; }
     function getPlayer1() public view returns(address) { return player1; }
     function getPlayer2() public view returns(address) { return player2; }
     function getPlayer1Balance() public view returns(uint) { return player1Balance; }
@@ -64,15 +71,15 @@ contract Poker {
             }
         }
         
-        // End of game
         if (player1Balance == 0 && player2Balance == 0 &&
                 player1Reserve == RESERVE && player2Reserve == RESERVE) {
+            // End of game
             player1.transfer(player1Reserve);
             player2.transfer(player2Reserve);
             player1Reserve = 0;
             player2Reserve = 0;
-            registeredValue1 = 0;
-            registeredValue2 = 0;
+            player1RegisteredValue = 0;
+            player2RegisteredValue = 0;
         }
     }
 
@@ -84,8 +91,8 @@ contract Poker {
     address payable winner = payable(address(this));
     function runGame() public {
         if (gameState != GameState.DONE) {
-            player1Score = int(keccak256(abi.encodePacked(registeredValue1, msg.sender, blockhash(block.number - 1))));
-            player2Score = int(keccak256(abi.encodePacked(registeredValue2, msg.sender, blockhash(block.number - 1))));
+            player1Score = int(keccak256(abi.encodePacked(player1RegisteredValue, msg.sender, blockhash(block.number - 1))));
+            player2Score = int(keccak256(abi.encodePacked(player2RegisteredValue, msg.sender, blockhash(block.number - 1))));
             if (player1Score > player2Score) {
                 winner = player1;
             } else {
